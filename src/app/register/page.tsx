@@ -5,6 +5,24 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
+async function withTimeout<T>(promise: Promise<T>, milliseconds = 10000) {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error("CLIENT_TIMEOUT"));
+    }, milliseconds);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
 export default function RegisterPage() {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -34,12 +52,14 @@ export default function RegisterPage() {
         return;
       }
 
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-        callbackUrl: "/dashboard",
-      });
+      const result = await withTimeout(
+        signIn("credentials", {
+          email,
+          password,
+          redirect: false,
+          callbackUrl: "/dashboard",
+        }),
+      );
 
       if (result?.ok) {
         router.push("/dashboard");
@@ -48,8 +68,12 @@ export default function RegisterPage() {
       }
 
       setMessage("Cuenta creada. Ahora inicia sesion.");
-    } catch {
-      setMessage("No se pudo conectar con el servidor.");
+    } catch (error) {
+      setMessage(
+        error instanceof Error && error.message === "CLIENT_TIMEOUT"
+          ? "El inicio de sesion tardo demasiado. Prueba iniciar sesion manualmente."
+          : "No se pudo conectar con el servidor.",
+      );
     } finally {
       setIsLoading(false);
     }

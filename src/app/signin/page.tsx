@@ -6,6 +6,24 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { FaGithub, FaGoogle } from "react-icons/fa";
 
+async function withTimeout<T>(promise: Promise<T>, milliseconds = 10000) {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error("CLIENT_TIMEOUT"));
+    }, milliseconds);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -36,6 +54,10 @@ export default function LoginPage() {
       return "Falta configurar Redis/KV en Vercel.";
     }
 
+    if (error === "CLIENT_TIMEOUT") {
+      return "El login tardo demasiado. Revisa Redis o intenta otra vez.";
+    }
+
     return "No se pudo iniciar sesion.";
   };
 
@@ -45,12 +67,14 @@ export default function LoginPage() {
     setMessage("");
 
     try {
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-        callbackUrl: "/dashboard",
-      });
+      const result = await withTimeout(
+        signIn("credentials", {
+          email,
+          password,
+          redirect: false,
+          callbackUrl: "/dashboard",
+        }),
+      );
 
       if (result?.ok) {
         router.push("/dashboard");
@@ -59,8 +83,12 @@ export default function LoginPage() {
       }
 
       setMessage(getErrorMessage(result?.error ?? ""));
-    } catch {
-      setMessage("No se pudo conectar con el servidor de autenticacion.");
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? getErrorMessage(error.message)
+          : "No se pudo conectar con el servidor de autenticacion.",
+      );
     } finally {
       setIsLoading(false);
     }
