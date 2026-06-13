@@ -1,9 +1,8 @@
 "use client";
 
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { FaGithub, FaGoogle } from "react-icons/fa";
 
 async function withTimeout<T>(promise: Promise<T>, milliseconds = 10000) {
@@ -25,11 +24,17 @@ async function withTimeout<T>(promise: Promise<T>, milliseconds = 10000) {
 }
 
 export default function LoginPage() {
-  const router = useRouter();
+  const { status } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      window.location.replace("/dashboard");
+    }
+  }, [status]);
 
   const getErrorMessage = (error: string) => {
     if (error.startsWith("LOCKED_")) {
@@ -77,8 +82,7 @@ export default function LoginPage() {
       );
 
       if (result?.ok) {
-        router.push("/dashboard");
-        router.refresh();
+        window.location.assign(result.url ?? "/dashboard");
         return;
       }
 

@@ -2,7 +2,6 @@
 
 import { signIn } from "next-auth/react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 async function withTimeout<T>(promise: Promise<T>, milliseconds = 10000) {
@@ -24,7 +23,6 @@ async function withTimeout<T>(promise: Promise<T>, milliseconds = 10000) {
 }
 
 export default function RegisterPage() {
-  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -62,8 +60,7 @@ export default function RegisterPage() {
       );
 
       if (result?.ok) {
-        router.push("/dashboard");
-        router.refresh();
+        window.location.assign(result.url ?? "/dashboard");
         return;
       }
 
