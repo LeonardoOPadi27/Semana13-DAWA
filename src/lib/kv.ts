@@ -21,15 +21,31 @@ export async function redisCommand<T>(command: unknown[]) {
     throw new Error("STORAGE_NOT_CONFIGURED");
   }
 
-  const response = await fetch(redisUrl, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${redisToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(command),
-    cache: "no-store",
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 6000);
+
+  let response: Response;
+
+  try {
+    response = await fetch(redisUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${redisToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(command),
+      cache: "no-store",
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("REDIS_TIMEOUT");
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const data = (await response.json()) as RedisResponse<T>;
 

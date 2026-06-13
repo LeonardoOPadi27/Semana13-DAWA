@@ -18,37 +18,41 @@ export default function RegisterPage() {
     setIsLoading(true);
     setMessage("");
 
-    const response = await fetch("/api/register", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ name, email, password }),
-    });
+    try {
+      const response = await fetch("/api/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name, email, password }),
+      });
 
-    const data = (await response.json()) as { message?: string };
+      const data = (await response.json()) as { message?: string };
 
-    if (!response.ok) {
-      setMessage(data.message ?? "No se pudo crear la cuenta.");
+      if (!response.ok) {
+        setMessage(data.message ?? "No se pudo crear la cuenta.");
+        return;
+      }
+
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+        callbackUrl: "/dashboard",
+      });
+
+      if (result?.ok) {
+        router.push("/dashboard");
+        router.refresh();
+        return;
+      }
+
+      setMessage("Cuenta creada. Ahora inicia sesion.");
+    } catch {
+      setMessage("No se pudo conectar con el servidor.");
+    } finally {
       setIsLoading(false);
-      return;
     }
-
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-      callbackUrl: "/dashboard",
-    });
-
-    if (result?.ok) {
-      router.push("/dashboard");
-      router.refresh();
-      return;
-    }
-
-    setMessage("Cuenta creada. Ahora inicia sesion.");
-    setIsLoading(false);
   };
 
   return (

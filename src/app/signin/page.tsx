@@ -28,6 +28,14 @@ export default function LoginPage() {
       return "Completa tu correo y clave.";
     }
 
+    if (error === "REDIS_TIMEOUT") {
+      return "La base de datos tardo demasiado. Intenta otra vez.";
+    }
+
+    if (error === "STORAGE_NOT_CONFIGURED") {
+      return "Falta configurar Redis/KV en Vercel.";
+    }
+
     return "No se pudo iniciar sesion.";
   };
 
@@ -36,21 +44,26 @@ export default function LoginPage() {
     setIsLoading(true);
     setMessage("");
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-      callbackUrl: "/dashboard",
-    });
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+        callbackUrl: "/dashboard",
+      });
 
-    if (result?.ok) {
-      router.push("/dashboard");
-      router.refresh();
-      return;
+      if (result?.ok) {
+        router.push("/dashboard");
+        router.refresh();
+        return;
+      }
+
+      setMessage(getErrorMessage(result?.error ?? ""));
+    } catch {
+      setMessage("No se pudo conectar con el servidor de autenticacion.");
+    } finally {
+      setIsLoading(false);
     }
-
-    setMessage(getErrorMessage(result?.error ?? ""));
-    setIsLoading(false);
   };
 
   return (

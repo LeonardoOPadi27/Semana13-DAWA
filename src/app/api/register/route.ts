@@ -8,6 +8,8 @@ const errorMessages: Record<string, string> = {
   EMAIL_EXISTS: "Ya existe una cuenta con ese correo.",
   STORAGE_NOT_CONFIGURED:
     "Configura KV_REST_API_URL y KV_REST_API_TOKEN en Vercel para registrar usuarios.",
+  REDIS_TIMEOUT:
+    "La base de datos tardo demasiado en responder. Intenta nuevamente.",
 };
 
 export async function POST(request: Request) {
